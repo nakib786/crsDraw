@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Express Entry Live Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Replaced development runtime CDN script with production compiled style pipeline -->
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         @keyframes liquidGradient {
             0% { background-position: 0% 50%; }
@@ -43,38 +44,38 @@
         }
     </style>
 </head>
-<body class="bg-[#090d16] text-slate-100 min-h-screen font-sans selection:bg-purple-500/30">
+<body class="bg-[#090d16] text-gray-100 min-h-screen font-sans">
 
     <header class="animate-hero-bg min-h-[50vh] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden border-b border-white/5">
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,#090d16_95%)]"></div>
+        <div class="absolute inset-0 bg-radial-gradient"></div>
         
         <div class="relative z-10 w-full max-w-4xl text-center">
-            <span class="text-xs uppercase tracking-[0.3em] font-bold text-purple-400 bg-purple-500/10 px-3 py-1.5 rounded-full border border-purple-500/20">Live Tracker</span>
-            <h1 class="text-4xl md:text-6xl font-black mt-4 mb-8 tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+            <span class="text-xs uppercase tracking-widest font-bold text-purple-400 bg-purple-500 bg-opacity-10 px-3 py-1.5 rounded-full border border-purple-500 border-opacity-20">Live Tracker</span>
+            <h1 class="text-4xl md:text-6xl font-black mt-4 mb-8 tracking-tight text-white">
                 Express Entry Draws
             </h1>
 
             <div id="hero-spotlight" class="w-full max-w-2xl mx-auto opacity-0">
-                <div class="text-slate-400 text-sm animate-pulse">Establishing handshake with live database...</div>
+                <div class="text-gray-400 text-sm animate-pulse">Establishing handshake with live database...</div>
             </div>
         </div>
     </header>
 
-    <section class="sticky top-0 z-30 glass-panel border-x-0 border-t-0 backdrop-blur-md bg-[#090d16]/80 px-4 py-4">
+    <section class="sticky top-0 z-30 glass-panel border-l-0 border-r-0 border-t-0 backdrop-blur-md bg-[#090d16] bg-opacity-80 px-4 py-4">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row gap-4 justify-between items-center">
             <div class="flex flex-wrap gap-3 w-full sm:w-auto">
-                <select id="filter-type" class="bg-slate-900/90 border border-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-purple-500 transition-colors w-full sm:w-48 text-slate-300">
+                <select id="filter-type" class="bg-gray-900 border border-gray-800 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-purple-500 transition-colors w-full sm:w-48 text-gray-300">
                     <option value="all">All Draw Types</option>
                 </select>
 
-                <select id="sort-engine" class="bg-slate-900/90 border border-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-purple-500 transition-colors w-full sm:w-48 text-slate-300">
+                <select id="sort-engine" class="bg-gray-900 border border-gray-800 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-purple-500 transition-colors w-full sm:w-48 text-gray-300">
                     <option value="date-desc">Newest First</option>
                     <option value="date-asc">Oldest First</option>
                     <option value="score-desc">Highest CRS Score</option>
                     <option value="score-asc">Lowest CRS Score</option>
                 </select>
             </div>
-            <div id="counter-display" class="text-xs font-mono text-slate-500 tracking-wider uppercase">
+            <div id="counter-display" class="text-xs font-mono text-gray-500 tracking-wider uppercase">
                 Syncing records...
             </div>
         </div>
@@ -82,11 +83,11 @@
 
     <main class="max-w-7xl mx-auto px-4 py-12">
         <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            </div>
+            <!-- Data loaded dynamically -->
+        </div>
     </main>
 
     <script>
-        // Directly references our internal proxy API location hosted safely on your Vercel URL
         const STREAM_URL = '/api/fetch-draws';
         let originalDataSet = [];
 
@@ -104,7 +105,7 @@
                 console.error("Data pipeline processing failure:", error);
                 document.getElementById('counter-display').innerText = "Error syncing updates.";
                 document.getElementById('hero-spotlight').innerHTML = `
-                    <div class="p-6 bg-red-950/30 border border-red-500/20 rounded-2xl text-red-400 text-sm">
+                    <div class="p-6 bg-red-950 bg-opacity-30 border border-red-500 border-opacity-20 rounded-2xl text-red-400 text-sm">
                         Failed to fetch data live from back-end api endpoint.
                     </div>
                 `;
@@ -135,15 +136,15 @@
             const staggerDelay = isHeroMode ? 0 : (index % 12) * 40; 
 
             return `
-                <div class="${isHeroMode ? 'bg-slate-950/60 p-8 border-purple-500/30 shadow-2xl shadow-purple-500/5' : 'bg-slate-900/40 p-6'} 
+                <div class="${isHeroMode ? 'bg-gray-950 p-8 border border-purple-500 border-opacity-30 shadow-2xl' : 'bg-gray-900 bg-opacity-40 p-6'} 
                             glass-panel rounded-2xl interactive-card animate-pop text-left relative overflow-hidden"
                      style="animation-delay: ${staggerDelay}ms; opacity: 0;">
                     
                     <div class="flex justify-between items-center mb-4">
-                        <span class="text-xs font-mono font-bold px-2.5 py-1 bg-slate-800 text-slate-300 rounded-md border border-slate-700">
+                        <span class="text-xs font-mono font-bold px-2.5 py-1 bg-gray-800 text-gray-300 rounded-md border border-gray-700">
                             Draw #${draw.drawNumber || '---'}
                         </span>
-                        <span class="text-xs text-slate-400 font-medium">${dateFormatted}</span>
+                        <span class="text-xs text-gray-400 font-medium">${dateFormatted}</span>
                     </div>
 
                     <h3 class="${isHeroMode ? 'text-2xl' : 'text-lg'} font-bold text-white tracking-tight line-clamp-2 min-h-[3.5rem] flex items-center">
@@ -151,13 +152,13 @@
                     </h3>
 
                     <div class="grid grid-cols-2 gap-3 mt-6">
-                        <div class="bg-slate-950/40 border border-white/5 p-3.5 rounded-xl">
-                            <span class="block text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-0.5">CRS Cutoff</span>
+                        <div class="bg-gray-950 bg-opacity-40 border border-white border-opacity-5 p-3.5 rounded-xl">
+                            <span class="block text-[10px] uppercase font-bold tracking-wider text-gray-500 mb-0.5">CRS Cutoff</span>
                             <span class="text-2xl font-black text-purple-400">${cleanScore || '---'}</span>
                         </div>
-                        <div class="bg-slate-950/40 border border-white/5 p-3.5 rounded-xl">
-                            <span class="block text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-0.5">ITAs Issued</span>
-                            <span class="text-2xl font-black text-emerald-400">${Number(cleanSize).toLocaleString()}</span>
+                        <div class="bg-gray-950 bg-opacity-40 border border-white border-opacity-5 p-3.5 rounded-xl">
+                            <span class="block text-[10px] uppercase font-bold tracking-wider text-gray-500 mb-0.5">ITAs Issued</span>
+                            <span class="text-2xl font-black text-green-400">${Number(cleanSize).toLocaleString()}</span>
                         </div>
                     </div>
                 </div>
@@ -187,7 +188,7 @@
                 heroContainer.innerHTML = createComponentCard(filteredData[0], 0, true);
                 heroContainer.style.opacity = "1";
             } else {
-                heroContainer.innerHTML = `<p class="text-slate-500 text-sm">No matching records found.</p>`;
+                heroContainer.innerHTML = `<p class="text-gray-500 text-sm">No matching records found.</p>`;
             }
 
             const gridContainer = document.getElementById('cards-grid');
