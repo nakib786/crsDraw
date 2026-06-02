@@ -86,28 +86,25 @@
     </main>
 
     <script>
-        // Switched to a multi-layered high-availability CDN proxy chain to eliminate public proxy CORS blocks on Vercel
         const TARGET_ENDPOINT = 'https://www.canada.ca/content/dam/ircc/documents/json/ee_rounds_123_en.json';
-        const STREAM_URL = `https://cors-anywhere.herokuapp.com/${TARGET_ENDPOINT}`;
-        
-        // Secondary ultra-reliable raw bypass fallback
+        const STREAM_URL = `https://api.allorigins.win/get?url=${encodeURIComponent(TARGET_ENDPOINT)}`;
         const FALLBACK_STREAM_URL = `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(TARGET_ENDPOINT)}`;
         
         let originalDataSet = [];
 
         async function runTracker() {
             try {
-                // Primary high-speed request pipeline
-                let response = await fetch(FALLBACK_STREAM_URL);
-                
-                // Fail-safe logic if the primary endpoint encounters rate limits
-                if (!response.ok) {
-                    response = await fetch(`https://thingproxy.freeboard.io/fetch/${TARGET_ENDPOINT}`);
+                let response = await fetch(STREAM_URL);
+                let dataset;
+
+                if (response.ok) {
+                    const wrapper = await response.json();
+                    dataset = JSON.parse(wrapper.contents);
+                } else {
+                    response = await fetch(FALLBACK_STREAM_URL);
+                    dataset = await response.json();
                 }
-                
-                if (!response.ok) throw new Error('All cloud bypass endpoints exhausted.');
-                
-                const dataset = await response.json();
+
                 originalDataSet = dataset.rounds || dataset;
 
                 generateFilterDropdowns();
@@ -117,7 +114,7 @@
                 document.getElementById('counter-display').innerText = "Error syncing updates.";
                 document.getElementById('hero-spotlight').innerHTML = `
                     <div class="p-6 bg-red-950/30 border border-red-500/20 rounded-2xl text-red-400 text-sm">
-                        Failed to fetch data stream live. CORS gateway validation issue. Try refreshing in a moment.
+                        Failed to fetch data stream live. CORS gateway validation issue.
                     </div>
                 `;
                 document.getElementById('hero-spotlight').style.opacity = "1";
@@ -141,6 +138,10 @@
                 ? new Date(draw.drawDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
                 : 'N/A';
 
+            // Clean string characters from the numbers array (commas, spaces) so parsing functions succeed
+            const cleanSize = draw.drawSize ? String(draw.drawSize).replace(/[^\d]/g, '') : '0';
+            const cleanScore = draw.drawCRS ? String(draw.drawCRS).replace(/[^\d]/g, '') : '---';
+
             const staggerDelay = isHeroMode ? 0 : (index % 12) * 40; 
 
             return `
@@ -162,11 +163,11 @@
                     <div class="grid grid-cols-2 gap-3 mt-6">
                         <div class="bg-slate-950/40 border border-white/5 p-3.5 rounded-xl">
                             <span class="block text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-0.5">CRS Cutoff</span>
-                            <span class="text-2xl font-black text-purple-400">${draw.drawMinScore || '---'}</span>
+                            <span class="text-2xl font-black text-purple-400">${cleanScore || '---'}</span>
                         </div>
                         <div class="bg-slate-950/40 border border-white/5 p-3.5 rounded-xl">
                             <span class="block text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-0.5">ITAs Issued</span>
-                            <span class="text-2xl font-black text-emerald-400">${Number(draw.drawSize || 0).toLocaleString()}</span>
+                            <span class="text-2xl font-black text-emerald-400">${Number(cleanSize).toLocaleString()}</span>
                         </div>
                     </div>
                 </div>
@@ -182,10 +183,13 @@
             });
 
             filteredData.sort((alpha, beta) => {
+                const scoreA = parseInt(String(alpha.drawCRS).replace(/[^\d]/g, '')) || 0;
+                const scoreB = parseInt(String(beta.drawCRS).replace(/[^\d]/g, '')) || 0;
+
                 if (currentSort === 'date-desc') return new Date(beta.drawDate) - new Date(alpha.drawDate);
                 if (currentSort === 'date-asc') return new Date(alpha.drawDate) - new Date(beta.drawDate);
-                if (currentSort === 'score-desc') return (Number(beta.drawMinScore) || 0) - (Number(alpha.drawMinScore) || 0);
-                if (currentSort === 'score-asc') return (Number(alpha.drawMinScore) || 0) - (Number(beta.drawMinScore) || 0);
+                if (currentSort === 'score-desc') return scoreB - scoreA;
+                if (currentSort === 'score-asc') return scoreA - scoreB;
             });
 
             const heroContainer = document.getElementById('hero-spotlight');
