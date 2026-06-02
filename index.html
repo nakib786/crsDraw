@@ -44,7 +44,8 @@
 </head>
 <body class="bg-[#090d16] text-gray-100 min-h-screen font-sans antialiased">
 
-    <header class="animate-hero-bg min-h-[50vh] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden border-b border-gray-800">
+    <!-- Hero Section: Displays ONLY the 1 Single Latest Draw Card -->
+    <header class="animate-hero-bg min-h-[45vh] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden border-b border-gray-800">
         <div class="absolute inset-0 bg-gradient-to-b from-transparent to-[#090d16]"></div>
         
         <div class="relative z-10 w-full max-w-4xl text-center">
@@ -53,12 +54,14 @@
                 Express Entry Dashboard
             </h1>
 
+            <!-- Spotlight Container: Holds exactly one single hero metric card -->
             <div id="hero-spotlight" class="w-full max-w-2xl mx-auto opacity-0 transition-opacity duration-500">
                 <div class="text-gray-400 text-sm animate-pulse">Establishing secure handshake with live data streams...</div>
             </div>
         </div>
     </header>
 
+    <!-- Navigation & Dynamic Controls Sticky Toolbar -->
     <section class="sticky top-0 z-30 bg-[#090d16] bg-opacity-95 backdrop-blur-md border-b border-gray-800 px-4 py-4">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row gap-4 justify-between items-center">
             <div class="flex flex-wrap gap-3 w-full sm:w-auto">
@@ -79,6 +82,7 @@
         </div>
     </section>
 
+    <!-- Core Data Matrix: Interactive Table for All Remaining Elements -->
     <main class="max-w-7xl mx-auto px-4 py-10">
         <div class="w-full bg-gray-950 rounded-2xl overflow-hidden shadow-2xl border border-gray-800">
             <div class="overflow-x-auto custom-scrollbar">
@@ -93,7 +97,8 @@
                         </tr>
                     </thead>
                     <tbody id="table-pipeline-body" class="divide-y divide-gray-800/60 text-sm text-gray-200 bg-[#0c1220]">
-                        </tbody>
+                        <!-- Historical rows generated dynamically here -->
+                    </tbody>
                 </table>
             </div>
             <div id="table-empty-state" class="hidden text-center py-16 text-gray-500 text-sm font-medium bg-[#0c1220]">
@@ -108,19 +113,36 @@
         
         let originalDataSet = [];
 
-        // Helper function to resolve the dynamic variations in Canada.ca raw date JSON strings safely
-        function normalizeDatasetDate(rawDate) {
-            if (!rawDate) return null;
-            // Clean out text padding or spaces around string if present
-            let cleanStr = String(rawDate).trim();
-            // Try matching strings formatting structured exactly like 'May 26, 2026' or '2026-05-26'
-            let parsedTimestamp = Date.parse(cleanStr);
-            if (!isNaN(parsedTimestamp)) return new Date(parsedTimestamp);
-            
-            // Failover check: If raw structure reads "2026-05-26 12:00:00" or custom arrays
-            let unifiedString = cleanStr.replace(/-/g, '/');
-            let fallbackTimestamp = Date.parse(unifiedString);
-            return !isNaN(fallbackTimestamp) ? new Date(fallbackTimestamp) : null;
+        // Safely extracts dates directly from Canada.ca parameters (drawDate, drawDate2, or date keys)
+        function extractRawDateString(draw) {
+            if (!draw) return '';
+            // Evaluates potential JSON keys utilized inside Canada's upstream schema arrays
+            return draw.drawDate || draw.drawDate2 || draw.date || '';
+        }
+
+        // Resolves variations in Canada.ca raw JSON date objects avoiding local timezone shifts
+        function normalizeDatasetDate(draw) {
+            const rawStr = extractRawDateString(draw).trim();
+            if (!rawStr) return null;
+
+            // Handle pure YYYY-MM-DD formatting safely without drifting time zones
+            if (/^\d{4}-\d{2}-\d{2}$/.test(rawStr)) {
+                const parts = rawStr.split('-');
+                return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            }
+
+            // Fallback parsing engine for alternative textual strings (e.g., 'May 26, 2026')
+            const timestamp = Date.parse(rawStr.replace(/-/g, '/'));
+            return !isNaN(timestamp) ? new Date(timestamp) : null;
+        }
+
+        function formatDisplayDate(draw) {
+            const parsedDate = normalizeDatasetDate(draw);
+            if (parsedDate && !isNaN(parsedDate.getTime())) {
+                return parsedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            }
+            // Absolute string fallback fallback if matching profiles break downstream
+            return extractRawDateString(draw) || '---';
         }
 
         async function runTracker() {
@@ -169,12 +191,7 @@
         }
 
         function createComponentCard(draw) {
-            // Re-routed date serialization mapping directly through the parser normalization pipeline engine
-            const parsedDate = normalizeDatasetDate(draw.drawDate || draw.date);
-            const dateFormatted = parsedDate 
-                ? parsedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                : (draw.drawDate || draw.date || 'N/A');
-
+            const dateFormatted = formatDisplayDate(draw);
             const cleanSize = draw.drawSize ? String(draw.drawSize).replace(/[^\d]/g, '') : '0';
             const cleanScore = draw.drawCRS ? String(draw.drawCRS).replace(/[^\d]/g, '') : '---';
 
@@ -217,8 +234,8 @@
                 const scoreA = parseInt(String(alpha.drawCRS).replace(/[^\d]/g, '')) || 0;
                 const scoreB = parseInt(String(beta.drawCRS).replace(/[^\d]/g, '')) || 0;
                 
-                const dateA = normalizeDatasetDate(alpha.drawDate || alpha.date) || new Date(0);
-                const dateB = normalizeDatasetDate(beta.drawDate || beta.date) || new Date(0);
+                const dateA = normalizeDatasetDate(alpha) || new Date(0);
+                const dateB = normalizeDatasetDate(beta) || new Date(0);
 
                 if (currentSort === 'date-desc') return dateB - dateA;
                 if (currentSort === 'date-asc') return dateA - dateB;
@@ -235,11 +252,11 @@
                 heroContainer.innerHTML = `<p class="text-gray-400 text-sm bg-gray-900 p-4 rounded-xl inline-block">No recent records available.</p>`;
             }
 
-            // 2. Render all historical information entries sequentially straight inside the data table matrix rows
+            // 2. Render all historical entries directly into data table rows
             const tableBody = document.getElementById('table-pipeline-body');
             const emptyState = document.getElementById('table-empty-state');
             
-            // Omitting index [0] from table contents as it is already being displayed inside the spotlight hero module
+            // Omitting index [0] from table contents as it is already displayed in the hero component above
             const historicalRows = filteredData.slice(1);
 
             if (historicalRows.length === 0) {
@@ -248,11 +265,7 @@
             } else {
                 emptyState.classList.add('hidden');
                 tableBody.innerHTML = historicalRows.map(draw => {
-                    const parsedDate = normalizeDatasetDate(draw.drawDate || draw.date);
-                    const displayDate = parsedDate
-                        ? parsedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                        : (draw.drawDate || draw.date || '---');
-
+                    const displayDate = formatDisplayDate(draw);
                     const score = draw.drawCRS ? String(draw.drawCRS).replace(/[^\d]/g, '') : '---';
                     const amount = draw.drawSize ? String(draw.drawSize).replace(/[^\d]/g, '') : '0';
 
