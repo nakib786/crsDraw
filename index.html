@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Express Entry Live Dashboard</title>
-    <!-- Replaced development runtime CDN script with production compiled style pipeline -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         @keyframes liquidGradient {
@@ -89,28 +88,43 @@
 
     <script>
         const STREAM_URL = '/api/fetch-draws';
+        const DIRECT_BROWSER_FALLBACK = 'https://api.codetabs.com/v1/proxy/?quest=https://www.canada.ca/content/dam/ircc/documents/json/ee_rounds_123_en.json';
+        
         let originalDataSet = [];
 
         async function runTracker() {
+            let dataset;
             try {
+                // Primary Request: Try hitting your fixed Vercel proxy API
                 const response = await fetch(STREAM_URL);
-                if (!response.ok) throw new Error('Internal Server Error');
-                
-                const dataset = await response.json();
-                originalDataSet = dataset.rounds || dataset;
-
-                generateFilterDropdowns();
-                executeRenderPipeline();
+                if (!response.ok) throw new Error('API Gateway Down');
+                dataset = await response.json();
             } catch (error) {
-                console.error("Data pipeline processing failure:", error);
-                document.getElementById('counter-display').innerText = "Error syncing updates.";
-                document.getElementById('hero-spotlight').innerHTML = `
-                    <div class="p-6 bg-red-950 bg-opacity-30 border border-red-500 border-opacity-20 rounded-2xl text-red-400 text-sm">
-                        Failed to fetch data live from back-end api endpoint.
-                    </div>
-                `;
-                document.getElementById('hero-spotlight').style.opacity = "1";
+                console.warn("Backend timed out/blocked. Initiating local client browser proxy failover...", error);
+                try {
+                    // Secondary Request: Browser fetches directly through a proxy to skip Vercel completely
+                    const fallbackResponse = await fetch(DIRECT_BROWSER_FALLBACK);
+                    if (!fallbackResponse.ok) throw new Error('All entry endpoints down');
+                    dataset = await fallbackResponse.json();
+                } catch (fallbackError) {
+                    displayErrorUI();
+                    return;
+                }
             }
+
+            originalDataSet = dataset.rounds || dataset;
+            generateFilterDropdowns();
+            executeRenderPipeline();
+        }
+
+        function displayErrorUI() {
+            document.getElementById('counter-display').innerText = "Sync Error.";
+            document.getElementById('hero-spotlight').innerHTML = `
+                <div class="p-6 bg-red-950 bg-opacity-30 border border-red-500 border-opacity-20 rounded-2xl text-red-400 text-sm">
+                    Live stream unreachable. Firewall blocks detected on upstream networks.
+                </div>
+            `;
+            document.getElementById('hero-spotlight').style.opacity = "1";
         }
 
         function generateFilterDropdowns() {
