@@ -55,7 +55,8 @@
             </h1>
 
             <div id="hero-spotlight" class="w-full max-w-2xl mx-auto opacity-0">
-                </div>
+                <div class="text-slate-400 text-sm animate-pulse">Establishing handshake with IRCC live database...</div>
+            </div>
         </div>
     </header>
 
@@ -85,7 +86,10 @@
     </main>
 
     <script>
-        const STREAM_URL = 'https://www.canada.ca/content/dam/ircc/documents/json/ee_rounds_123_en.json';
+        // Implemented free development CORS proxy setup to handle raw cross-origin blocking on Vercel
+        const TARGET_ENDPOINT = 'https://www.canada.ca/content/dam/ircc/documents/json/ee_rounds_123_en.json';
+        const STREAM_URL = `https://corsproxy.io/?url=${encodeURIComponent(TARGET_ENDPOINT)}`;
+        
         let originalDataSet = [];
 
         async function runTracker() {
@@ -103,7 +107,7 @@
                 document.getElementById('counter-display').innerText = "Error syncing updates.";
                 document.getElementById('hero-spotlight').innerHTML = `
                     <div class="p-6 bg-red-950/30 border border-red-500/20 rounded-2xl text-red-400 text-sm">
-                        Failed to fetch data stream live.
+                        Failed to fetch data stream live. CORS gateway validation issue.
                     </div>
                 `;
                 document.getElementById('hero-spotlight').style.opacity = "1";
