@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Express Entry Live Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes liquidGradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .animate-hero-bg {
+            background: linear-gradient(-45deg, #1e1b4b, #311042, #0f172a, #1e293b);
+            background-size: 400% 400%;
+            animation: liquidGradient 12s ease infinite;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        @keyframes cardPop {
+            0% { transform: scale(0.6) translateY(40px); opacity: 0; filter: blur(10px); }
+            70% { transform: scale(1.03) translateY(-4px); opacity: 0.85; }
+            100% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0); }
+        }
+        .animate-pop {
+            animation: cardPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .interactive-card {
+            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        .interactive-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(168, 85, 247, 0.4);
+            box-shadow: 0 20px 40px -15px rgba(168, 85, 247, 0.25);
+        }
+    </style>
+</head>
+<body class="bg-[#090d16] text-slate-100 min-h-screen font-sans selection:bg-purple-500/30">
+
+    <header class="animate-hero-bg min-h-[50vh] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden border-b border-white/5">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_20%,#090d16_95%)]"></div>
+        
+        <div class="relative z-10 w-full max-w-4xl text-center">
+            <span class="text-xs uppercase tracking-[0.3em] font-bold text-purple-400 bg-purple-500/10 px-3 py-1.5 rounded-full border border-purple-500/20">Live Tracker</span>
+            <h1 class="text-4xl md:text-6xl font-black mt-4 mb-8 tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                Express Entry Draws
+            </h1>
+
+            <div id="hero-spotlight" class="w-full max-w-2xl mx-auto opacity-0">
+                </div>
+        </div>
+    </header>
+
+    <section class="sticky top-0 z-30 glass-panel border-x-0 border-t-0 backdrop-blur-md bg-[#090d16]/80 px-4 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row gap-4 justify-between items-center">
+            <div class="flex flex-wrap gap-3 w-full sm:w-auto">
+                <select id="filter-type" class="bg-slate-900/90 border border-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-purple-500 transition-colors w-full sm:w-48 text-slate-300">
+                    <option value="all">All Draw Types</option>
+                </select>
+
+                <select id="sort-engine" class="bg-slate-900/90 border border-slate-800 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-purple-500 transition-colors w-full sm:w-48 text-slate-300">
+                    <option value="date-desc">Newest First</option>
+                    <option value="date-asc">Oldest First</option>
+                    <option value="score-desc">Highest CRS Score</option>
+                    <option value="score-asc">Lowest CRS Score</option>
+                </select>
+            </div>
+            <div id="counter-display" class="text-xs font-mono text-slate-500 tracking-wider uppercase">
+                Syncing records...
+            </div>
+        </div>
+    </section>
+
+    <main class="max-w-7xl mx-auto px-4 py-12">
+        <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            </div>
+    </main>
+
+    <script>
+        const STREAM_URL = 'https://www.canada.ca/content/dam/ircc/documents/json/ee_rounds_123_en.json';
+        let originalDataSet = [];
+
+        async function runTracker() {
+            try {
+                const response = await fetch(STREAM_URL);
+                if (!response.ok) throw new Error('Network response error');
+                const dataset = await response.json();
+                
+                originalDataSet = dataset.rounds || dataset;
+
+                generateFilterDropdowns();
+                executeRenderPipeline();
+            } catch (error) {
+                console.error("Data pipeline processing failure:", error);
+                document.getElementById('counter-display').innerText = "Error syncing updates.";
+                document.getElementById('hero-spotlight').innerHTML = `
+                    <div class="p-6 bg-red-950/30 border border-red-500/20 rounded-2xl text-red-400 text-sm">
+                        Failed to fetch data stream live.
+                    </div>
+                `;
+                document.getElementById('hero-spotlight').style.opacity = "1";
+            }
+        }
+
+        function generateFilterDropdowns() {
+            const filterElement = document.getElementById('filter-type');
+            const uniqueTypes = [...new Set(originalDataSet.map(item => item.drawName).filter(Boolean))];
+            
+            uniqueTypes.forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.innerText = name;
+                filterElement.appendChild(opt);
+            });
+        }
+
+        function createComponentCard(draw, index, isHeroMode = false) {
+            const dateFormatted = draw.drawDate 
+                ? new Date(draw.drawDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                : 'N/A';
+
+            const staggerDelay = isHeroMode ? 0 : (index % 12) * 40; 
+
+            return `
+                <div class="${isHeroMode ? 'bg-slate-950/60 p-8 border-purple-500/30 shadow-2xl shadow-purple-500/5' : 'bg-slate-900/40 p-6'} 
+                            glass-panel rounded-2xl interactive-card animate-pop text-left relative overflow-hidden"
+                     style="animation-delay: ${staggerDelay}ms; opacity: 0;">
+                    
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-xs font-mono font-bold px-2.5 py-1 bg-slate-800 text-slate-300 rounded-md border border-slate-700">
+                            Draw #${draw.drawNumber || '---'}
+                        </span>
+                        <span class="text-xs text-slate-400 font-medium">${dateFormatted}</span>
+                    </div>
+
+                    <h3 class="${isHeroMode ? 'text-2xl' : 'text-lg'} font-bold text-white tracking-tight line-clamp-2 min-h-[3.5rem] flex items-center">
+                        ${draw.drawName || 'General Round'}
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-3 mt-6">
+                        <div class="bg-slate-950/40 border border-white/5 p-3.5 rounded-xl">
+                            <span class="block text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-0.5">CRS Cutoff</span>
+                            <span class="text-2xl font-black text-purple-400">${draw.drawMinScore || '---'}</span>
+                        </div>
+                        <div class="bg-slate-950/40 border border-white/5 p-3.5 rounded-xl">
+                            <span class="block text-[10px] uppercase font-bold tracking-wider text-slate-500 mb-0.5">ITAs Issued</span>
+                            <span class="text-2xl font-black text-emerald-400">${Number(draw.drawSize || 0).toLocaleString()}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function executeRenderPipeline() {
+            const currentFilter = document.getElementById('filter-type').value;
+            const currentSort = document.getElementById('sort-engine').value;
+
+            let filteredData = originalDataSet.filter(item => {
+                return currentFilter === 'all' || item.drawName === currentFilter;
+            });
+
+            filteredData.sort((alpha, beta) => {
+                if (currentSort === 'date-desc') return new Date(beta.drawDate) - new Date(alpha.drawDate);
+                if (currentSort === 'date-asc') return new Date(alpha.drawDate) - new Date(beta.drawDate);
+                if (currentSort === 'score-desc') return (Number(beta.drawMinScore) || 0) - (Number(alpha.drawMinScore) || 0);
+                if (currentSort === 'score-asc') return (Number(alpha.drawMinScore) || 0) - (Number(beta.drawMinScore) || 0);
+            });
+
+            const heroContainer = document.getElementById('hero-spotlight');
+            if (filteredData.length > 0) {
+                heroContainer.innerHTML = createComponentCard(filteredData[0], 0, true);
+                heroContainer.style.opacity = "1";
+            } else {
+                heroContainer.innerHTML = `<p class="text-slate-500 text-sm">No matching records found.</p>`;
+            }
+
+            const gridContainer = document.getElementById('cards-grid');
+            const subGridItems = filteredData.slice(1);
+            
+            gridContainer.innerHTML = subGridItems.map((item, index) => createComponentCard(item, index, false)).join('');
+            
+            document.getElementById('counter-display').innerText = `${filteredData.length} instances processed`;
+        }
+
+        document.getElementById('filter-type').addEventListener('change', executeRenderPipeline);
+        document.getElementById('sort-engine').addEventListener('change', executeRenderPipeline);
+
+        runTracker();
+    </script>
+</body>
+</html>
