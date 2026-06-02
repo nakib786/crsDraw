@@ -82,29 +82,28 @@
 
     <main class="max-w-7xl mx-auto px-4 py-12">
         <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Data loaded dynamically -->
-        </div>
+            </div>
     </main>
 
     <script>
         const STREAM_URL = '/api/fetch-draws';
-        const DIRECT_BROWSER_FALLBACK = 'https://api.codetabs.com/v1/proxy/?quest=https://www.canada.ca/content/dam/ircc/documents/json/ee_rounds_123_en.json';
+        const BROWSER_PROXY_FALLBACK = 'https://api.codetabs.com/v1/proxy/?quest=https://www.canada.ca/content/dam/ircc/documents/json/ee_rounds_123_en.json';
         
         let originalDataSet = [];
 
         async function runTracker() {
             let dataset;
             try {
-                // Primary Request: Try hitting your fixed Vercel proxy API
+                // Primary Option: Try fetching via Vercel back-end API with rotating User-Agents
                 const response = await fetch(STREAM_URL);
-                if (!response.ok) throw new Error('API Gateway Down');
+                if (!response.ok) throw new Error('Backend route blocked or error encountered');
                 dataset = await response.json();
             } catch (error) {
-                console.warn("Backend timed out/blocked. Initiating local client browser proxy failover...", error);
+                console.warn("Vercel backend blocked by firewall. Switching seamlessly to browser-side failover tunnel...", error);
                 try {
-                    // Secondary Request: Browser fetches directly through a proxy to skip Vercel completely
-                    const fallbackResponse = await fetch(DIRECT_BROWSER_FALLBACK);
-                    if (!fallbackResponse.ok) throw new Error('All entry endpoints down');
+                    // Secondary Option: Fetch through an encrypted browser proxy routing network
+                    const fallbackResponse = await fetch(BROWSER_PROXY_FALLBACK);
+                    if (!fallbackResponse.ok) throw new Error('All communication lines exhausted');
                     dataset = await fallbackResponse.json();
                 } catch (fallbackError) {
                     displayErrorUI();
@@ -118,10 +117,10 @@
         }
 
         function displayErrorUI() {
-            document.getElementById('counter-display').innerText = "Sync Error.";
+            document.getElementById('counter-display').innerText = "Sync Failure.";
             document.getElementById('hero-spotlight').innerHTML = `
                 <div class="p-6 bg-red-950 bg-opacity-30 border border-red-500 border-opacity-20 rounded-2xl text-red-400 text-sm">
-                    Live stream unreachable. Firewall blocks detected on upstream networks.
+                    Live database feeds are completely unreachable right now. Please try reloading the page.
                 </div>
             `;
             document.getElementById('hero-spotlight').style.opacity = "1";
