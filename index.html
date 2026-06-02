@@ -6,7 +6,6 @@
     <title>Express Entry Live Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
-        /* Force dark theme defaults everywhere to isolate from external stylesheet leakage */
         html, body {
             background-color: #090d16 !important;
             color: #f3f4f6 !important;
@@ -45,7 +44,6 @@
 </head>
 <body class="bg-[#090d16] text-gray-100 min-h-screen font-sans antialiased">
 
-    <!-- Hero Section: Displays ONLY the 1 Single Latest Draw Card -->
     <header class="animate-hero-bg min-h-[50vh] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden border-b border-gray-800">
         <div class="absolute inset-0 bg-gradient-to-b from-transparent to-[#090d16]"></div>
         
@@ -55,14 +53,12 @@
                 Express Entry Dashboard
             </h1>
 
-            <!-- Spotlight Container: Holds exactly one single hero metric card -->
             <div id="hero-spotlight" class="w-full max-w-2xl mx-auto opacity-0 transition-opacity duration-500">
                 <div class="text-gray-400 text-sm animate-pulse">Establishing secure handshake with live data streams...</div>
             </div>
         </div>
     </header>
 
-    <!-- Navigation & Dynamic Controls Sticky Toolbar -->
     <section class="sticky top-0 z-30 bg-[#090d16] bg-opacity-95 backdrop-blur-md border-b border-gray-800 px-4 py-4">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row gap-4 justify-between items-center">
             <div class="flex flex-wrap gap-3 w-full sm:w-auto">
@@ -83,7 +79,6 @@
         </div>
     </section>
 
-    <!-- Core Data Matrix: Interactive Table for All Remaining Elements -->
     <main class="max-w-7xl mx-auto px-4 py-10">
         <div class="w-full bg-gray-950 rounded-2xl overflow-hidden shadow-2xl border border-gray-800">
             <div class="overflow-x-auto custom-scrollbar">
@@ -98,8 +93,7 @@
                         </tr>
                     </thead>
                     <tbody id="table-pipeline-body" class="divide-y divide-gray-800/60 text-sm text-gray-200 bg-[#0c1220]">
-                        <!-- Historical rows generated dynamically here -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
             <div id="table-empty-state" class="hidden text-center py-16 text-gray-500 text-sm font-medium bg-[#0c1220]">
@@ -113,6 +107,21 @@
         const BROWSER_PROXY_FALLBACK = 'https://api.codetabs.com/v1/proxy/?quest=https://www.canada.ca/content/dam/ircc/documents/json/ee_rounds_123_en.json';
         
         let originalDataSet = [];
+
+        // Helper function to resolve the dynamic variations in Canada.ca raw date JSON strings safely
+        function normalizeDatasetDate(rawDate) {
+            if (!rawDate) return null;
+            // Clean out text padding or spaces around string if present
+            let cleanStr = String(rawDate).trim();
+            // Try matching strings formatting structured exactly like 'May 26, 2026' or '2026-05-26'
+            let parsedTimestamp = Date.parse(cleanStr);
+            if (!isNaN(parsedTimestamp)) return new Date(parsedTimestamp);
+            
+            // Failover check: If raw structure reads "2026-05-26 12:00:00" or custom arrays
+            let unifiedString = cleanStr.replace(/-/g, '/');
+            let fallbackTimestamp = Date.parse(unifiedString);
+            return !isNaN(fallbackTimestamp) ? new Date(fallbackTimestamp) : null;
+        }
 
         async function runTracker() {
             let dataset;
@@ -160,9 +169,11 @@
         }
 
         function createComponentCard(draw) {
-            const dateFormatted = draw.drawDate 
-                ? new Date(draw.drawDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                : 'N/A';
+            // Re-routed date serialization mapping directly through the parser normalization pipeline engine
+            const parsedDate = normalizeDatasetDate(draw.drawDate || draw.date);
+            const dateFormatted = parsedDate 
+                ? parsedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                : (draw.drawDate || draw.date || 'N/A');
 
             const cleanSize = draw.drawSize ? String(draw.drawSize).replace(/[^\d]/g, '') : '0';
             const cleanScore = draw.drawCRS ? String(draw.drawCRS).replace(/[^\d]/g, '') : '---';
@@ -205,9 +216,12 @@
             filteredData.sort((alpha, beta) => {
                 const scoreA = parseInt(String(alpha.drawCRS).replace(/[^\d]/g, '')) || 0;
                 const scoreB = parseInt(String(beta.drawCRS).replace(/[^\d]/g, '')) || 0;
+                
+                const dateA = normalizeDatasetDate(alpha.drawDate || alpha.date) || new Date(0);
+                const dateB = normalizeDatasetDate(beta.drawDate || beta.date) || new Date(0);
 
-                if (currentSort === 'date-desc') return new Date(beta.drawDate) - new Date(alpha.drawDate);
-                if (currentSort === 'date-asc') return new Date(alpha.drawDate) - new Date(beta.drawDate);
+                if (currentSort === 'date-desc') return dateB - dateA;
+                if (currentSort === 'date-asc') return dateA - dateB;
                 if (currentSort === 'score-desc') return scoreB - scoreA;
                 if (currentSort === 'score-asc') return scoreA - scoreB;
             });
@@ -234,10 +248,10 @@
             } else {
                 emptyState.classList.add('hidden');
                 tableBody.innerHTML = historicalRows.map(draw => {
-                    const dateObj = draw.drawDate ? new Date(draw.drawDate) : null;
-                    const displayDate = dateObj && !isNaN(dateObj)
-                        ? dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-                        : '---';
+                    const parsedDate = normalizeDatasetDate(draw.drawDate || draw.date);
+                    const displayDate = parsedDate
+                        ? parsedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                        : (draw.drawDate || draw.date || '---');
 
                     const score = draw.drawCRS ? String(draw.drawCRS).replace(/[^\d]/g, '') : '---';
                     const amount = draw.drawSize ? String(draw.drawSize).replace(/[^\d]/g, '') : '0';
