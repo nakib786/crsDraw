@@ -6,83 +6,106 @@
     <title>Express Entry Live Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
+        /* Force dark theme defaults everywhere to isolate from external stylesheet leakage */
+        html, body {
+            background-color: #090d16 !important;
+            color: #f3f4f6 !important;
+        }
         @keyframes liquidGradient {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
         .animate-hero-bg {
-            background: linear-gradient(-45deg, #1e1b4b, #311042, #0f172a, #1e293b);
-            background-size: 400% 400%;
-            animation: liquidGradient 12s ease infinite;
+            background: linear-gradient(-45deg, #120e2e, #200a35, #090d16, #111827) !important;
+            background-size: 400% 400% !important;
+            animation: liquidGradient 12s ease infinite !important;
         }
-
         .glass-panel {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(15, 23, 42, 0.85) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
         }
-
-        @keyframes cardPop {
-            0% { transform: scale(0.6) translateY(40px); opacity: 0; filter: blur(10px); }
-            70% { transform: scale(1.03) translateY(-4px); opacity: 0.85; }
-            100% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0); }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
-        .animate-pop {
-            animation: cardPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #090d16;
         }
-
-        .interactive-card {
-            transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #27272a;
+            border-radius: 4px;
         }
-        .interactive-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            border-color: rgba(168, 85, 247, 0.4);
-            box-shadow: 0 20px 40px -15px rgba(168, 85, 247, 0.25);
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #3f3f46;
         }
     </style>
 </head>
-<body class="bg-[#090d16] text-gray-100 min-h-screen font-sans">
+<body class="bg-[#090d16] text-gray-100 min-h-screen font-sans antialiased">
 
-    <header class="animate-hero-bg min-h-[50vh] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden border-b border-white/5">
-        <div class="absolute inset-0 bg-radial-gradient"></div>
+    <!-- Hero Section: Displays ONLY the 1 Single Latest Draw Card -->
+    <header class="animate-hero-bg min-h-[50vh] flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden border-b border-gray-800">
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent to-[#090d16]"></div>
         
         <div class="relative z-10 w-full max-w-4xl text-center">
-            <span class="text-xs uppercase tracking-widest font-bold text-purple-400 bg-purple-500 bg-opacity-10 px-3 py-1.5 rounded-full border border-purple-500 border-opacity-20">Live Tracker</span>
-            <h1 class="text-4xl md:text-6xl font-black mt-4 mb-8 tracking-tight text-white">
-                Express Entry Draws
+            <span class="text-xs uppercase tracking-widest font-bold text-purple-400 bg-purple-900 bg-opacity-30 px-3 py-1.5 rounded-full border border-purple-500 border-opacity-30">Live Sync Engine</span>
+            <h1 class="text-3xl md:text-5xl font-black mt-4 mb-8 tracking-tight text-white">
+                Express Entry Dashboard
             </h1>
 
-            <div id="hero-spotlight" class="w-full max-w-2xl mx-auto opacity-0">
-                <div class="text-gray-400 text-sm animate-pulse">Establishing handshake with live database...</div>
+            <!-- Spotlight Container: Holds exactly one single hero metric card -->
+            <div id="hero-spotlight" class="w-full max-w-2xl mx-auto opacity-0 transition-opacity duration-500">
+                <div class="text-gray-400 text-sm animate-pulse">Establishing secure handshake with live data streams...</div>
             </div>
         </div>
     </header>
 
-    <section class="sticky top-0 z-30 glass-panel border-l-0 border-r-0 border-t-0 backdrop-blur-md bg-[#090d16] bg-opacity-80 px-4 py-4">
+    <!-- Navigation & Dynamic Controls Sticky Toolbar -->
+    <section class="sticky top-0 z-30 bg-[#090d16] bg-opacity-95 backdrop-blur-md border-b border-gray-800 px-4 py-4">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row gap-4 justify-between items-center">
             <div class="flex flex-wrap gap-3 w-full sm:w-auto">
-                <select id="filter-type" class="bg-gray-900 border border-gray-800 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-purple-500 transition-colors w-full sm:w-48 text-gray-300">
+                <select id="filter-type" class="bg-gray-900 border border-gray-700 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-purple-500 transition-colors w-full sm:w-56 text-gray-200 font-medium">
                     <option value="all">All Draw Types</option>
                 </select>
 
-                <select id="sort-engine" class="bg-gray-900 border border-gray-800 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-purple-500 transition-colors w-full sm:w-48 text-gray-300">
+                <select id="sort-engine" class="bg-gray-900 border border-gray-700 text-sm rounded-xl px-4 py-2.5 outline-none focus:border-purple-500 transition-colors w-full sm:w-56 text-gray-200 font-medium">
                     <option value="date-desc">Newest First</option>
                     <option value="date-asc">Oldest First</option>
                     <option value="score-desc">Highest CRS Score</option>
                     <option value="score-asc">Lowest CRS Score</option>
                 </select>
             </div>
-            <div id="counter-display" class="text-xs font-mono text-gray-500 tracking-wider uppercase">
+            <div id="counter-display" class="text-xs font-mono text-gray-400 tracking-wider uppercase bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-800">
                 Syncing records...
             </div>
         </div>
     </section>
 
-    <main class="max-w-7xl mx-auto px-4 py-12">
-        <div id="cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <!-- Core Data Matrix: Interactive Table for All Remaining Elements -->
+    <main class="max-w-7xl mx-auto px-4 py-10">
+        <div class="w-full bg-gray-950 rounded-2xl overflow-hidden shadow-2xl border border-gray-800">
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-gray-800 bg-gray-900 text-gray-400 text-xs uppercase font-mono tracking-wider">
+                            <th class="py-4 px-6 font-bold">Draw #</th>
+                            <th class="py-4 px-6 font-bold">Date Issued</th>
+                            <th class="py-4 px-6 font-bold">Draw Type Profile</th>
+                            <th class="py-4 px-6 font-bold text-right">CRS Cutoff</th>
+                            <th class="py-4 px-6 font-bold text-right">ITAs Issued</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-pipeline-body" class="divide-y divide-gray-800/60 text-sm text-gray-200 bg-[#0c1220]">
+                        <!-- Historical rows generated dynamically here -->
+                    </tbody>
+                </table>
             </div>
+            <div id="table-empty-state" class="hidden text-center py-16 text-gray-500 text-sm font-medium bg-[#0c1220]">
+                No matching historic instances found matching selection filters.
+            </div>
+        </div>
     </main>
 
     <script>
@@ -94,16 +117,14 @@
         async function runTracker() {
             let dataset;
             try {
-                // Primary Option: Try fetching via Vercel back-end API with rotating User-Agents
                 const response = await fetch(STREAM_URL);
-                if (!response.ok) throw new Error('Backend route blocked or error encountered');
+                if (!response.ok) throw new Error('API routing layer error response');
                 dataset = await response.json();
             } catch (error) {
-                console.warn("Vercel backend blocked by firewall. Switching seamlessly to browser-side failover tunnel...", error);
+                console.warn("Backend node unreachable. Activating browser client fallbacks...", error);
                 try {
-                    // Secondary Option: Fetch through an encrypted browser proxy routing network
                     const fallbackResponse = await fetch(BROWSER_PROXY_FALLBACK);
-                    if (!fallbackResponse.ok) throw new Error('All communication lines exhausted');
+                    if (!fallbackResponse.ok) throw new Error('Fallback proxies exhausted');
                     dataset = await fallbackResponse.json();
                 } catch (fallbackError) {
                     displayErrorUI();
@@ -119,8 +140,8 @@
         function displayErrorUI() {
             document.getElementById('counter-display').innerText = "Sync Failure.";
             document.getElementById('hero-spotlight').innerHTML = `
-                <div class="p-6 bg-red-950 bg-opacity-30 border border-red-500 border-opacity-20 rounded-2xl text-red-400 text-sm">
-                    Live database feeds are completely unreachable right now. Please try reloading the page.
+                <div class="p-6 bg-red-950 bg-opacity-80 border border-red-700/60 rounded-2xl text-red-200 text-sm shadow-xl">
+                    Live system metrics are completely unreachable right now. Please reload the dashboard context.
                 </div>
             `;
             document.getElementById('hero-spotlight').style.opacity = "1";
@@ -138,7 +159,7 @@
             });
         }
 
-        function createComponentCard(draw, index, isHeroMode = false) {
+        function createComponentCard(draw) {
             const dateFormatted = draw.drawDate 
                 ? new Date(draw.drawDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
                 : 'N/A';
@@ -146,32 +167,27 @@
             const cleanSize = draw.drawSize ? String(draw.drawSize).replace(/[^\d]/g, '') : '0';
             const cleanScore = draw.drawCRS ? String(draw.drawCRS).replace(/[^\d]/g, '') : '---';
 
-            const staggerDelay = isHeroMode ? 0 : (index % 12) * 40; 
-
             return `
-                <div class="${isHeroMode ? 'bg-gray-950 p-8 border border-purple-500 border-opacity-30 shadow-2xl' : 'bg-gray-900 bg-opacity-40 p-6'} 
-                            glass-panel rounded-2xl interactive-card animate-pop text-left relative overflow-hidden"
-                     style="animation-delay: ${staggerDelay}ms; opacity: 0;">
-                    
+                <div class="bg-gray-900 border-2 border-purple-500/40 p-6 rounded-2xl shadow-2xl text-left relative overflow-hidden max-w-xl mx-auto">
                     <div class="flex justify-between items-center mb-4">
-                        <span class="text-xs font-mono font-bold px-2.5 py-1 bg-gray-800 text-gray-300 rounded-md border border-gray-700">
-                            Draw #${draw.drawNumber || '---'}
+                        <span class="text-xs font-mono font-bold px-2.5 py-1 bg-purple-950 text-purple-300 rounded-md border border-purple-800/60">
+                            LATEST DRAW #${draw.drawNumber || '---'}
                         </span>
-                        <span class="text-xs text-gray-400 font-medium">${dateFormatted}</span>
+                        <span class="text-xs text-gray-400 font-bold tracking-wide">${dateFormatted}</span>
                     </div>
 
-                    <h3 class="${isHeroMode ? 'text-2xl' : 'text-lg'} font-bold text-white tracking-tight line-clamp-2 min-h-[3.5rem] flex items-center">
+                    <h3 class="text-xl font-extrabold text-white tracking-tight min-h-[3rem] flex items-center">
                         ${draw.drawName || 'General Round'}
                     </h3>
 
-                    <div class="grid grid-cols-2 gap-3 mt-6">
-                        <div class="bg-gray-950 bg-opacity-40 border border-white border-opacity-5 p-3.5 rounded-xl">
-                            <span class="block text-[10px] uppercase font-bold tracking-wider text-gray-500 mb-0.5">CRS Cutoff</span>
-                            <span class="text-2xl font-black text-purple-400">${cleanScore || '---'}</span>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="bg-black/40 border border-gray-800 p-3.5 rounded-xl">
+                            <span class="block text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-0.5">CRS Cutoff</span>
+                            <span class="text-3xl font-black text-purple-400">${cleanScore || '---'}</span>
                         </div>
-                        <div class="bg-gray-950 bg-opacity-40 border border-white border-opacity-5 p-3.5 rounded-xl">
-                            <span class="block text-[10px] uppercase font-bold tracking-wider text-gray-500 mb-0.5">ITAs Issued</span>
-                            <span class="text-2xl font-black text-green-400">${Number(cleanSize).toLocaleString()}</span>
+                        <div class="bg-black/40 border border-gray-800 p-3.5 rounded-xl">
+                            <span class="block text-[10px] uppercase font-bold tracking-wider text-gray-400 mb-0.5">ITAs Issued</span>
+                            <span class="text-3xl font-black text-green-400">${Number(cleanSize).toLocaleString()}</span>
                         </div>
                     </div>
                 </div>
@@ -196,20 +212,49 @@
                 if (currentSort === 'score-asc') return scoreA - scoreB;
             });
 
+            // 1. Render exactly 1 hero layout box holding the latest element status
             const heroContainer = document.getElementById('hero-spotlight');
             if (filteredData.length > 0) {
-                heroContainer.innerHTML = createComponentCard(filteredData[0], 0, true);
+                heroContainer.innerHTML = createComponentCard(filteredData[0]);
                 heroContainer.style.opacity = "1";
             } else {
-                heroContainer.innerHTML = `<p class="text-gray-500 text-sm">No matching records found.</p>`;
+                heroContainer.innerHTML = `<p class="text-gray-400 text-sm bg-gray-900 p-4 rounded-xl inline-block">No recent records available.</p>`;
             }
 
-            const gridContainer = document.getElementById('cards-grid');
-            const subGridItems = filteredData.slice(1);
+            // 2. Render all historical information entries sequentially straight inside the data table matrix rows
+            const tableBody = document.getElementById('table-pipeline-body');
+            const emptyState = document.getElementById('table-empty-state');
             
-            gridContainer.innerHTML = subGridItems.map((item, index) => createComponentCard(item, index, false)).join('');
+            // Omitting index [0] from table contents as it is already being displayed inside the spotlight hero module
+            const historicalRows = filteredData.slice(1);
+
+            if (historicalRows.length === 0) {
+                tableBody.innerHTML = '';
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                tableBody.innerHTML = historicalRows.map(draw => {
+                    const dateObj = draw.drawDate ? new Date(draw.drawDate) : null;
+                    const displayDate = dateObj && !isNaN(dateObj)
+                        ? dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+                        : '---';
+
+                    const score = draw.drawCRS ? String(draw.drawCRS).replace(/[^\d]/g, '') : '---';
+                    const amount = draw.drawSize ? String(draw.drawSize).replace(/[^\d]/g, '') : '0';
+
+                    return `
+                        <tr class="hover:bg-purple-950/20 transition-colors border-b border-gray-800/60 bg-gray-950 bg-opacity-40">
+                            <td class="py-4 px-6 font-mono text-xs text-purple-400 font-bold">#${draw.drawNumber || '---'}</td>
+                            <td class="py-4 px-6 whitespace-nowrap text-xs text-gray-300 font-medium">${displayDate}</td>
+                            <td class="py-4 px-6 font-bold text-white max-w-xs truncate">${draw.drawName || 'General Round'}</td>
+                            <td class="py-4 px-6 font-mono text-right font-extrabold text-purple-300 text-base">${score}</td>
+                            <td class="py-4 px-6 font-mono text-right font-extrabold text-green-400 text-base">${Number(amount).toLocaleString()}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
             
-            document.getElementById('counter-display').innerText = `${filteredData.length} instances processed`;
+            document.getElementById('counter-display').innerText = `${filteredData.length} records processed`;
         }
 
         document.getElementById('filter-type').addEventListener('change', executeRenderPipeline);
